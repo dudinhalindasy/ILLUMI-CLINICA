@@ -1,3 +1,5 @@
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz3whr2-lYmFJWXntPb8af6kEGb147OEcoQNbT4OV2HYSz6h_Spjxyqvjvs12TSmd4Klg/exec";
+
 document.addEventListener("DOMContentLoaded", function () {
 
     /* ===============================
@@ -179,8 +181,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
 
-    /* ===============================
-       FORMULÁRIO
+   /* ===============================
+       FORMULÁRIO (INTEGRAÇÃO GOOGLE SHEETS)
     =============================== */
 
     const formulario =
@@ -190,7 +192,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         formulario.addEventListener(
             "submit",
-            function (event) {
+            async function (event) {
 
                 event.preventDefault();
 
@@ -213,6 +215,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 const horario =
                     document.querySelector("#horario")
                         .value;
+
+                const botaoSubmit =
+                    formulario.querySelector("button[type='submit']");
 
 
                 if (!nome) {
@@ -248,49 +253,51 @@ document.addEventListener("DOMContentLoaded", function () {
                     `${partes[2]}/${partes[1]}/${partes[0]}`;
 
 
-                const agendamento = {
+                // Desabilita o botão para evitar cliques múltiplos durante o envio
+                if (botaoSubmit) {
+                    botaoSubmit.disabled = true;
+                    botaoSubmit.textContent = "Agendando...";
+                }
 
+                const dadosAgendamento = {
                     nome: nome,
-
                     telefone: telefone,
-
                     procedimento: procedimento,
-
                     data: dataFormatada,
-
                     horario: horario
-
                 };
 
+                try {
+                    // Envia os dados para a planilha
+                    await fetch(GOOGLE_SCRIPT_URL, {
+                        method: "POST",
+                        mode: "cors",
+                        headers: {
+                            "Content-Type": "text/plain;charset=utf-8",
+                        },
+                        body: JSON.stringify(dadosAgendamento)
+                    });
 
-                let agendamentos =
-                    JSON.parse(
-                        localStorage.getItem(
-                            "agendamentosIllumi"
-                        )
-                    ) || [];
+                    alert(
+                        "Agendamento realizado com sucesso!\n\n" +
+                        "Nome: " + nome +
+                        "\nProcedimento: " + procedimento +
+                        "\nData: " + dataFormatada +
+                        "\nHorário: " + horario +
+                        "\n\nA Clínica Illumi agradece!"
+                    );
 
+                    formulario.reset();
 
-                agendamentos.push(agendamento);
-
-
-                localStorage.setItem(
-                    "agendamentosIllumi",
-                    JSON.stringify(agendamentos)
-                );
-
-
-                alert(
-                    "Agendamento realizado com sucesso!\n\n" +
-                    "Nome: " + nome +
-                    "\nProcedimento: " + procedimento +
-                    "\nData: " + dataFormatada +
-                    "\nHorário: " + horario +
-                    "\n\nA Clínica Illumi agradece!"
-                );
-
-
-                formulario.reset();
+                } catch (err) {
+                    console.error("Erro ao enviar agendamento:", err);
+                    alert("Ocorreu um erro ao realizar o agendamento. Tente novamente.");
+                } finally {
+                    if (botaoSubmit) {
+                        botaoSubmit.disabled = false;
+                        botaoSubmit.textContent = "Confirmar agendamento";
+                    }
+                }
 
             }
         );
